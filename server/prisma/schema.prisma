@@ -1,0 +1,54 @@
+// server/prisma/schema.prisma
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") 
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id              String            @id 
+  email           String            @unique
+  first_name      String?
+  last_name       String?
+  avatar_url      String?
+  is_admin        Boolean           @default(false)
+  created_at      DateTime          @default(now())
+  savedProperties SavedProperty[]   // Relation to SavedProperty
+}
+
+// 4. Property Model
+model Property {
+  id              String            @id @default(uuid())
+  title           String
+  description     String?
+  price           Decimal
+  type            String
+  bedrooms        Int               @default(1)
+  bathrooms       Int               @default(1)
+  area_sqft       Int?
+  address         String?
+  city            String?
+  latitude        Float?
+  longitude       Float?
+  images          String[]          @default([])
+  publicIds   String[]             @default([])
+  is_featured     Boolean           @default(false)
+  is_sold         Boolean           @default(false)
+  created_at      DateTime          @default(now())
+  savedBy         SavedProperty[]   // Relation to SavedProperty
+}
+
+
+model SavedProperty {
+  id          String   @id @default(uuid())
+  user_id     String
+  property_id String
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  property    Property @relation(fields: [property_id], references: [id], onDelete: Cascade)
+  created_at  DateTime @default(now())
+
+  @@unique([user_id, property_id]) // Ek user ek property baar-baar save na kar sake
+}
