@@ -6,31 +6,35 @@ import { useRouter } from 'expo-router';
 import axios from 'axios';
 import COLORS from '@/color';
 import { formatMoney } from '@/lib/utilis';
+import { useEstateStore } from '@/store/property';
 
 const Search = () => {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [filterType, setFilterType] = useState("All"); // Added filter state
-  const [allProperties, setAllProperties] = useState([]);
+  // const [allProperties, setAllProperties] = useState([]);
   const [bed, setbed] = useState("Any")
 const [nfilter,setnfilter]=useState(0)
-  const [loading, setLoading] = useState(true);
+ 
   const [visible, setVisible] = useState(false);
   const [sprice, setsprice] = useState("")
   const [eprice, seteprice] = useState("")
-  
+     const allProperties = useEstateStore((state :any) => state.estates);
+      const fetchEstates = useEstateStore((state:any) => state.fetchEstates);
+       const loading=useEstateStore((state:any)=>state.isloading)
   useEffect(() => {
-    const fetchAllData = async () => {
-      try {
-        const response = await axios.get(`http://172.24.35.184:3000/properties`);
-        setAllProperties(response.data.pdata);
-      } catch (error) {
-        console.error("Error fetching properties:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAllData();
+  fetchEstates()
+    // const fetchAllData = async () => {
+    //   try {
+    //     const response = await axios.get(`${process.env.EXPO_PUBLIC_API_URL}/properties`);
+    //     setAllProperties(response.data.pdata);
+    //   } catch (error) {
+    //     console.error("Error fetching properties:", error);
+    //   } finally {
+    //     setLoading(false);
+    //   }
+    // };
+    // fetchAllData();
   }, []);
   function handlefilter() {
    if(bed!=="Any")
@@ -86,7 +90,7 @@ const [nfilter,setnfilter]=useState(0)
           <TextInput
             placeholder='Search here'
             className=' w-[90%]'
-            style={{ color: COLORS.placeholderText, }}
+            placeholderTextColor={'black'}
             onChangeText={setQuery}
 
           />

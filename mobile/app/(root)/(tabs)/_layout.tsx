@@ -6,6 +6,7 @@ import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import COLORS from '@/color';
 import { useUser } from '@clerk/expo';
 import axios from 'axios';
+import { useEstateStore } from '@/store/property';
 
 const IP_ADDRESS = "172.24.35.184"; 
 
@@ -54,56 +55,39 @@ function IOSTabs({ admin }: { admin: boolean }) {
 }
 
 export default function TabLayout() {
-  const [admin, setAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
-
   const { user, isLoaded } = useUser();
+  const fetchUser = useEstateStore((state: any) => state.fetchuser);
+  const userdata = useEstateStore((state: any) => state.userr);
+  
+  // Track if we have finished checking the user
+  const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
-    async function getdata() {
+    async function init() {
       if (!isLoaded) return;
-
-      if (!user?.id) {
-        setLoading(false);
-        return;
+      if (user) {
+        // Wait for the user to be added/fetched
+        await fetchUser(user);
       }
-
-      try {
-        const res = await axios.get(
-          `http://${IP_ADDRESS}:3000/getuserbyid`,
-          {
-            params: { id: user.id },
-          }
-        );
-
-        setAdmin(!!res.data?.user?.is_admin);
-      } catch (error) {
-        console.log(error);
-      } finally {
-        setLoading(false);
-      }
+      setIsInitializing(false);
     }
+    init();
+  }, [isLoaded, user]);
 
-    getdata();
-  }, [isLoaded, user?.id]);
-
-  if (!isLoaded || loading) {
+  if (!isLoaded || isInitializing) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" />
       </View>
     );
   }
 
+  // Use !! to ensure a boolean is passed to the tab components
+  const isAdmin = !!userdata?.is_admin;
+
   return Platform.OS === "ios" ? (
-    <IOSTabs admin={admin} />
+    <IOSTabs admin={isAdmin} />
   ) : (
-    <AndroidTabs admin={admin} />
+    <AndroidTabs admin={isAdmin} />
   );
 }

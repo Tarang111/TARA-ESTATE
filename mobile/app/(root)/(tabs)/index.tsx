@@ -1,4 +1,4 @@
-import { View, Text, Image, TextInput, FlatList, TouchableOpacity } from 'react-native'
+import { View, Text, Image, TextInput, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { useUser } from '@clerk/expo'
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router'
@@ -7,103 +7,51 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import COLORS from '@/color'
 import { Ionicons } from '@expo/vector-icons'
 import { formatMoney } from '@/lib/utilis'
+import { useEstateStore } from '@/store/property'
 const index = () => {
   const {success}=useLocalSearchParams<any>()
   const { user, isLoaded, isSignedIn } = useUser()
-  const [userdata, setuserdata] = useState<any>({})
+  // const [userdata, setuserdata] = useState<any>({})
+  const [loadingf,setloadingf]=useState(false)
+    const [loadingp,setloadingp]=useState(false)
   const [fpdata, setfpdata] = useState<any>([])
   const [pdata, setpdata] = useState<any>([])
-    const [sdata, setsdata] = useState<any>([])
+    // const [sdata, setsdata] = useState<any>([])
+    const estates = useEstateStore((state :any) => state.estates);
+    const fetchEstates = useEstateStore((state:any) => state.fetchEstates);
+      const efstates = useEstateStore((state :any) => state.featured);
+  const fetchfEstates=useEstateStore((state:any)=>state.getFeaturedProperties)
+  const loading=useEstateStore((state:any)=>state.isloading)
+  const fetchsave=useEstateStore((state:any)=>state.fetchSavedProperties)
+  const sdata=useEstateStore((state:any)=>state.savedIds)
+  const fetchuser=useEstateStore((state:any)=>state.fetchuser)
+    const userdata = useEstateStore((state :any) => state.userr);
+const refreshTrigger = useEstateStore((state: any) => state.refreshTrigger);
   const router = useRouter()
   if (!isSignedIn) {
     return <Redirect href={"/(auth)/signin"} />
   }
-  const IP_ADDRESS = "172.24.35.184";
-  async function adduser() {
-    try {
-      // 1. Extract the data safely (using optional chaining)
-      const id = user?.id
-      const first_name = user?.firstName
-      const lastname = user?.lastName
-      const email = user?.primaryEmailAddress?.emailAddress // Clerk emails are usually nested nested objects
 
-
-      // 2. Pass the data object as the second argument to axios.post
-      const response = await axios.post(`http://${IP_ADDRESS}:3000/useradd`, {
-        id,
-        first_name,
-        lastname,
-        email
-      }, { headers: { 'Content-Type': 'application/json' } })
-
-
-
-
-
-      setuserdata(response.data)
-
-
-
-    } catch (error: any) {
-      if (error.response) {
-        // The server responded with a status code outside the 2xx range
-        console.error("Server Error:", error.response.status, error.response.data);
-      } else if (error.request) {
-        // The request was made but no response was received
-        console.error("No response received. Check if server is running or IP is correct.", error.request);
-      } else {
-        console.error("Error setting up request:", error.message);
-      }
-    }
-  }
-  async function getfeatured() {
-    try {
-      const data = await axios.get(`http://${IP_ADDRESS}:3000/featuredproperties`)
-      setfpdata(data.data.pfdata)
-
-
-    } catch (error) {
-      console.log(error);
-
-    }
-  }
-  async function getproperties() {
-    try {
-      const data = await axios.get(`http://${IP_ADDRESS}:3000/properties`)
-      setpdata(data.data.pdata)
-
-      //  console.log(data.data.pdata);
-
-    } catch (error) {
-      console.log(error);
-
-    }
-  }
-  async function getsproperties() {
-    try {
-      const data = await axios.get(`http://${IP_ADDRESS}:3000/savedproperties`,{
-         params: { id: user?.id }
-      })
-     
-      setsdata(data.data.sdata)
-   
-   
-
-    } catch (error) {
-      console.log(error);
-
-    }
-  }
   
-  useEffect(() => {
-    if (user) {
-      adduser();
-      getfeatured()
-      getproperties()
-      getsproperties()
+useEffect(() => {
+  if (user?.id) {
+  if (userdata?.id && userdata.id !== user.id) {
+       useEstateStore.getState().invalidatelogout();
     }
-  }, [user,success])
-  const savedPropertyIds = sdata.map((item: any) => item.property_id);
+    useEstateStore.setState({ 
+      estatesFetched: false, 
+      featuredFetched: false, 
+      savedFetched: false, 
+      fetchuserr: false 
+    });
+
+    // 2. Fetch fresh data
+    fetchuser(user);
+    fetchsave(user.id);
+    fetchEstates();
+    fetchfEstates();
+  }
+}, [user?.id]);
   return (
     <SafeAreaView className='flex-1' style={{ backgroundColor: `${COLORS.background}` }} >
       <View className='flex flex-row justify-between items-center w-[95%]  mx-auto'>
@@ -111,21 +59,25 @@ const index = () => {
           source={require('../../../assets/images/taraestate-removebg-preview.png')}
           style={{ width: 105, height: 90 }}
         />
-        <Text className='font-bold text-xl'>Hello! {userdata.first_name}🤗</Text>
+        <Text className='font-bold text-xl'>Hello! {userdata?.first_name}🤗</Text>
       </View>
       <View className='border flex-row  w-[95%] mx-auto rounded-lg items-center' style={{backgroundColor:COLORS.inputBackground}} onFocus={()=>{router.push('/search')}}>
         <TextInput
           placeholder='Search here'
           className=' w-[90%]'
-          style={{ color: COLORS.placeholderText ,}}
+          placeholderTextColor={'black'}
         />
         <Ionicons name="options" size={28} color={'#7d2150'} className=' p-0.5 rounded-lg' onPress={()=>{router.push("/search")}}/>
       </View>
       <View className='w-[95%] mx-auto mt-2'>
         <Text className='text-xl font-bold'>Featured</Text>
-
-        <FlatList
-          data={fpdata}
+       
+        {loading?
+        <ActivityIndicator size={40} color={'blue'}/>
+        :
+        efstates.length>0?
+          <FlatList
+          data={efstates}
           keyExtractor={item => item.id}
           renderItem={({ item }) => {
             return (
@@ -143,7 +95,7 @@ const index = () => {
                 <View className=' '>
                   <View className='flex-row justify-between p-1'>
                     <Text className='font-bold'>{item.title}</Text>
-                    <Ionicons name="heart" color={(savedPropertyIds.includes(item.id)?'red':'black')} size={20}/>
+                    <Ionicons name="heart" color={(sdata.includes(item.id)?'red':'black')} size={20}/>
                   </View>
                   <Text className='font-bold '>
                     <Ionicons name="location-outline" size={15} />
@@ -174,15 +126,17 @@ const index = () => {
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 5, gap: 10 }}
-        />
+        />:<Text>NO PROPERTY FOUND</Text>}
       </View>
 
 
       <View className='w-[95%] mx-auto mt-2 flex-1'>
         <Text className='text-xl font-bold'>Properties</Text>
 
-        <FlatList
-          data={pdata}
+       {loading?
+        <ActivityIndicator size={40} color={'blue'}/>
+        : <FlatList
+          data={estates}
           keyExtractor={item => item.id}
 
           renderItem={({ item }) => {
@@ -201,7 +155,7 @@ const index = () => {
                   
                      <View className='flex-row  justify-between '>
                     <Text className='font-bold'style={{ color: COLORS.textDark }}>{item.title.slice(0,26)}...</Text>
-                    <Ionicons name="heart" color={(savedPropertyIds.includes(item.id)?'red':'black')} size={20}/>
+                    <Ionicons name="heart" color={(sdata.includes(item.id)?'red':'black')} size={20}/>
                   </View>
                   <Text className='font-bold ' style={{ color: COLORS.textDark }}>
                     <Ionicons name="location-outline" size={15} />
@@ -231,7 +185,7 @@ const index = () => {
           }}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ gap: 10 }}
-        />
+        />}
       </View>
 
     </SafeAreaView>

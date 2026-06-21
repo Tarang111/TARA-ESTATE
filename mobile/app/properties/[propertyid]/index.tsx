@@ -7,6 +7,7 @@ import { useUser } from '@clerk/expo';
 import { Ionicons } from '@expo/vector-icons';
 import { formatMoney } from '@/lib/utilis';
 import { WebView } from 'react-native-webview';
+import { useEstateStore } from '@/store/property';
 
 
 const { width } = Dimensions.get('window');
@@ -23,38 +24,36 @@ const index = () => {
   const [admin, setAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [soldmodal,setsoldmodal]=useState(false)
-  const [imageViewerVisible,setImageViewerVisible]=useState(false)
+
   const [deleting,setdeleting]=useState(false)
-  async function getdata() {
-    if (!user?.id) return;
-    try {
-      const res = await axios.get(`http://${IP_ADDRESS}:3000/getuserbyid`, {
-        params: { id: user.id }
-      });
-      setAdmin(res.data?.user?.is_admin || false);
+  const invalidatesave = useEstateStore((state: any) => state.invalidatesave);
+    const invalidatedelete = useEstateStore((state: any) => state.invalidatedelete);
+      const invalidatemark = useEstateStore((state: any) => state.invalidatemark);
+        const fetchuser=useEstateStore((state:any)=>state.fetchuser)
+          const userdata = useEstateStore((state :any) => state.userr);
       
       
-    } catch (error) {
-      console.log(error);
-    } finally {
-      setLoading(false);
-    }
-  }
+   
+      
+      
+      
+ 
   async function deleteprop() {
     setdeleting(true)
     try {
-       const images=await axios.post(`http://${IP_ADDRESS}:3000/delete-images`,{
+       const images=await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/delete-images`,{
         publicIds:property.publicIds
        },{headers:{'Content-Type':'application/json'}})
       if(images.data.success)
       {
 
-        const data=await axios.post(`http://${IP_ADDRESS}:3000/deleteprop`,{
+        const data=await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/deleteprop`,{
          prop_id:propertyid
         },{headers:{'Content-Type':'application/json'}})
         if(data.data.success)
         {
          setvisible(false)
+         invalidatedelete();
          router.push("/")
         }
       }
@@ -68,13 +67,14 @@ const index = () => {
   }
 async function marksoldprop() {
     try {
-       const data=await axios.post(`http://${IP_ADDRESS}:3000/marksoldprop`,{
+       const data=await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/marksoldprop`,{
         prop_id:propertyid
        },{headers:{'Content-Type':'application/json'}})
        if(data.data.success)
        {
         getproperty()
         setsoldmodal(false)
+        invalidatemark();
        }
     } catch (error) {
       console.log(error);
@@ -83,7 +83,7 @@ async function marksoldprop() {
   }
 
   async function getproperty() {
-    const data = await axios.get(`http://${IP_ADDRESS}:3000/property`, {
+    const data = await axios.get(`${process.env.EXPO_PUBLIC_API_URL}/property`, {
       params: { id: propertyid }
     })
     setproperty(data.data.property)
@@ -94,7 +94,7 @@ async function marksoldprop() {
  
   async function getsproperties() {
     try {
-      const data = await axios.get(`http://${IP_ADDRESS}:3000/savedproperties`,{
+      const data = await axios.get(`${process.env.EXPO_PUBLIC_API_URL}/savedproperties`,{
          params: { id: user?.id }
       })
      
@@ -125,7 +125,7 @@ async function marksoldprop() {
 
   try {
     // 3. Perform actual server request
-    await axios.post(`http://${IP_ADDRESS}:3000/save`, {
+    await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/save`, {
       user_id: user?.id,
       p_id: propertyid
     }, { headers: { 'Content-Type': 'application/json' } });
@@ -137,16 +137,29 @@ async function marksoldprop() {
     // 5. ROLLBACK: If it fails, revert the UI to the previous state
     getsproperties(); 
   }
+  finally{
+    invalidatesave();
+  }
 }
    useEffect(() => {
     getproperty()
-     getdata();
+       fetchuser(user)
+      setLoading(false)
+      setAdmin(userdata?.is_admin || false);
     getsproperties()
   }, [propertyid,user])
 if(deleting)
   {
     return <View className='flex-1 justify-center items-center gap-4' style={{backgroundColor:COLORS.background}}>
       <Text className='font-bold text-xl'>Deleting Property Wait...🚀</Text>
+      <ActivityIndicator size={40}/>
+    </View>
+  
+}
+if(!property)
+  {
+    return <View className='flex-1 justify-center items-center gap-4' style={{backgroundColor:COLORS.background}}>
+      <Text className='font-bold text-xl'>Loading Property Wait...🚀</Text>
       <ActivityIndicator size={40}/>
     </View>
   

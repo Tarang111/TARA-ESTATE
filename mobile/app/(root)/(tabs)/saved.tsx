@@ -7,36 +7,27 @@ import { useUser } from '@clerk/expo'
 import { Ionicons } from '@expo/vector-icons'
 import { formatMoney } from '@/lib/utilis'
 import { useRouter } from 'expo-router'
+import { useEstateStore } from '@/store/property'
 
 const saved = () => {
-  const [savedd,setsavedd]=useState<any>([])
+
    const IP_ADDRESS = "172.24.35.184";
-   const [sdata, setsdata] = useState<any>([])
+
    const {user}=useUser()
    const router=useRouter()
-   const [loading,setLoading]=useState(true)
-  async function getsproperties() {
-    try {
-      const data = await axios.get(`http://${IP_ADDRESS}:3000/savedproperties`,{
-         params: { id: user?.id }
-      })
-     
-    const ids = data.data.sdata.map((item: any) => item.property_id);
-    const prop=data.data.sdata.map((item:any)=>item.property);
-    setsdata(prop)
-    setsavedd(ids);
-    setLoading(false)
-  
-   
+const sdata = useEstateStore((state: any) => state.saved);
+   const savedd = useEstateStore((state: any) => state.savedIds || []); // Fallback to empty array
+   const loading = useEstateStore((state: any) => state.isLoading);
+   const fetchSaved = useEstateStore((state: any) => state.fetchSavedProperties);
 
-    } catch (error) {
-      console.log(error);
+   useEffect(() => {
+     if (user?.id) {
+       fetchSaved(user.id);
+     }
+   }, [user?.id]); // Only runs when user ID is available
 
-    }
-  }
-  useEffect(()=>{
-   getsproperties()
-  },[user])
+   // If sdata is undefined, fallback to []
+   const dataToRender = sdata.map((item:any)=>item.property)
   if(loading)
   {
     return <ActivityIndicator size={40} className='flex-1 ' style={{ backgroundColor:COLORS.background}}/>
@@ -49,9 +40,9 @@ const saved = () => {
         <Text className='text-[14px] font-extralight mb-3'>{sdata.length} Property saved</Text>
 
         <FlatList
-          data={sdata}
+          data={dataToRender}
           keyExtractor={item => item.id}
- className='mb-32'
+         className='mb-32'
           renderItem={({ item }) => {
 
             return (

@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import COLORS from '@/color'
 import axios from 'axios'
 import { Ionicons } from '@expo/vector-icons'
+import { useEstateStore } from '@/store/property'
 
 const profile = () => {
      const {signOut}=useAuth()
@@ -13,40 +14,63 @@ const profile = () => {
    const IP_ADDRESS = "172.24.35.184";
   const router=useRouter()
   const [visible,setvisible]=useState(false)
-  const [userdata,setuserdata]=useState<any>(null)
-   const [loading,setLoading]=useState(true)
- 
-  async function getdata() {
-    if (!user?.id) return;
-    try {
-      const res = await axios.get(`http://${IP_ADDRESS}:3000/getuserbyid`, {
-        params: { id: user.id }
-      });
+  const fetchuser=useEstateStore((state:any)=>state.fetchuser)
+   const userdata=useEstateStore((state:any)=>state.userr)
+const [loading,setloading]=useState(true)
+const [loadlogout,setloadlogout]=useState(false)
+ const invalidate=useEstateStore((state:any)=>state.invalidatelogout)
+useEffect(() => {
+  fetchuser(user)
+  setloading(!userdata); 
+}, [userdata]); // Added [userdata] as a dependency
+  // async function getdata() {
+  //   if (!user?.id) return;
+  //   try {
+  //     const res = await axios.get(`${process.env.EXPO_PUBLIC_API_URL}/getuserbyid`, {
+  //       params: { id: user.id }
+  //     });
   
-      setuserdata(res.data?.user)
+  //     setuserdata(res.data?.user)
       
-    } catch (error) {
-      console.log(error);
-    } finally {
-      setLoading(false);
-    }
-  }
-  useEffect(() => {
-    getdata();
-  }, [user]);
+  //   } catch (error) {
+  //     console.log(error);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // }
+  // useEffect(() => {
+  //   getdata();
+  // }, [user]);
   const avatarUrl = `https://api.dicebear.com/10.x/adventurer/png?seed=${userdata?.first_name}`;
    async function logout() {
-    await signOut()
-  
+    try {
+   setloadlogout(true);
+    
+    // 1. Wipe all data in the store
+    invalidate(); 
+    
+    // 2. Sign out from Clerk
+    await signOut();
+    router.push("/(auth)/signin")
+  } catch (error) {
+    console.error("Logout failed:", error);
+  }
+   
     
   } 
-  if(!isSignedIn)
-  {
-    <Redirect href={"/(auth)/signin"}/>
-  }
+  if (isLoaded && !isSignedIn) {
+  return <Redirect href="/(auth)/signin" />;
+}
     if(loading)
   {
     return <ActivityIndicator size={40} className='flex-1 ' style={{ backgroundColor:COLORS.background}}/>
+  }
+     if(loadlogout)
+  {
+    return <View className='flex-1 justify-center items-center gap-4' style={{ backgroundColor: COLORS.background }}>
+      <Text className='font-bold text-xl'>SIGNING OUT...🚀</Text>
+      <ActivityIndicator size={40} />
+    </View>
   }
   return (
     <View className='flex-1 ' style={{backgroundColor:COLORS.background}}>
@@ -68,8 +92,8 @@ const profile = () => {
     </View>
     <View className=' gap-4'>
      <View className='items-center'>
-       <Text  className='text-xl font-bold'>{userdata.first_name.toUpperCase() + userdata.last_name.toUpperCase()}</Text>
-      <Text  className='text-xl font-light'>{userdata.email}</Text>
+       <Text  className='text-xl font-bold'>{userdata?.first_name.toUpperCase() + userdata?.last_name.toUpperCase()}</Text>
+      <Text  className='text-xl font-light'>{userdata?.email}</Text>
      </View>
       <View className='gap-4'>
         <TouchableOpacity className='w-96 border rounded-xl px-2 justify-between py-1 flex-row items-center' style={{backgroundColor:COLORS.textDark}}

@@ -4,6 +4,7 @@ import axios from "axios";
 import { useAuth, useUser } from "@clerk/expo";
 import { Redirect, useRouter } from "expo-router";
 import "../global.css"
+
 export default function Index() {
    const { isSignedIn, isLoaded,signOut } = useAuth()
 
